@@ -172,9 +172,12 @@ export class GroveRunner {
       // `grove --json` reports a refusal as {"error":{…}} on stdout and writes nothing to
       // stderr, so without reading stdout the evidence carried no reason at all.
       const groveError = groveJsonError((err.stdout ?? '').toString());
+      // Only a string `what` becomes the headline: interpolating anything else can throw, and a
+      // refusal must stay E_GROVE_FAILED whatever grove printed.
+      const what = typeof groveError?.what === 'string' && groveError.what ? groveError.what : null;
       throw new GroveCmuxError(
         'E_GROVE_FAILED',
-        groveError?.what ? `grove refused: ${groveError.what}` : 'grove exited non-zero',
+        what ? `grove refused: ${what}` : 'grove exited non-zero',
         {
           bin: this.bin,
           args: ['--json', ...args],

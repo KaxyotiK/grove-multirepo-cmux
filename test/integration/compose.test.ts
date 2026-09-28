@@ -147,6 +147,23 @@ test('AC-13: a grove --json refusal on stdout reaches the E_GROVE_FAILED evidenc
   }
 });
 
+test('AC-13: a malformed grove --json refusal still refuses E_GROVE_FAILED, never E_INTERNAL', () => {
+  const w = makeWorld({ trees: [] });
+  try {
+    // A `what` that cannot become a string must not break the refusal it rides on.
+    const bin = join(w.base, 'malformed-grove');
+    writeFileSync(bin, `#!/bin/sh\necho '{"error":{"what":{"toString":null}}}'\nexit 2\n`, { mode: 0o755 });
+    const r = runJson(w, ['new', 'nope'], { GROVE_BIN: bin });
+    assert.equal(r.code, 8, r.stdout + r.stderr);
+    assert.equal(r.json.class, 'E_GROVE_FAILED');
+    assert.equal(r.json.message, 'grove exited non-zero');
+    assert.equal(r.json.evidence.exit_code, 2);
+    assert.deepEqual(r.json.evidence.grove_error, { what: { toString: null } });
+  } finally {
+    w.cleanup();
+  }
+});
+
 test('AC-12: an agent launches only when asked, in its own Tree, as part of the create', () => {
   const w = makeWorld();
   try {
