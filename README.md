@@ -23,7 +23,7 @@ grove-cmux run feat-checkout --tree api --agent claude -- "port the retry logic 
 
 Everything after `--` reaches the agent verbatim, so a multi-word prompt stays one argument.
 
-`close` tears down exactly the workspaces named by the projection ledger. It discovers each workspace's actual window, closes Trees before the anchor, and verifies absence before clearing ownership. It therefore takes no `--window`. The default retains a cleared ledger so a later `open` creates a new projection; `--forget` removes `.grove-cmux` after verified success. `--keep-anchor` retains the anchor, ungroups the owned group when safe, and releases ownership of the anchor; it refuses before any mutation unless cmux's method list names `workspace.group.ungroup`. Foreign workspaces and foreign groups are preserved. Read or verification failures, including a ledgered workspace or the owned group still live afterwards, retain the ledger for retry.
+`close` tears down exactly the workspaces named by the projection ledger. It discovers each workspace's actual window, closes Trees before the anchor, and verifies absence before clearing ownership. It therefore takes no `--window`. The default retains a cleared ledger so a later `open` creates a new projection; `--forget` removes `.grove-cmux` after verified success. `--keep-anchor` retains the anchor, ungroups the owned group when safe, and releases ownership of the anchor; when it plans that ungroup, it refuses before any mutation unless cmux's method list names `workspace.group.ungroup`. Foreign workspaces and foreign groups are preserved. Read or verification failures, including a ledgered workspace or the owned group still live afterwards, retain the ledger for retry.
 
 ```bash
 grove-cmux close feat-checkout --dry-run

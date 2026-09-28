@@ -19,7 +19,7 @@ grove-cmux run    [<grove-root>] --tree <tree> [--agent <name>] [-- <agent args>
 | --- | --- |
 | `--window <id\|focused>` | which cmux window to act in; refused by `close` |
 | `--tree <tree>` | `run`: short name (`api`) or full name (`grove@api`) |
-| `--agent <name>` | a grove-defined agent, checked before anything is created |
+| `--agent <name>` | a grove-defined agent; `run` checks it before anything is created, `open` does not check it |
 | `--allow-destructive` | `sync` only: close workspaces whose Tree is gone. Never the anchor. |
 | `--relocate` | re-project into this window and abandon the other one's objects |
 | `--dry-run` | `sync` or `close`: print the plan, change nothing |
@@ -60,6 +60,8 @@ Grove's flags reach `grove new` in order, in either form: `--repo checkout-api` 
 ```
 $ grove-cmux new tdown5 --repo=checkout-api
 error: E_AMBIGUOUS_TARGET (11): 14 cmux windows are open and nothing named which one to use
+evidence:
+  windows: [{"id":"20E3B5C1-…","title":"0: … workspaces=17"}, …]
 try: pass --window <id>, one of: 20E3B5C1-…, 3A190273-…, …
 ```
 
@@ -74,6 +76,9 @@ Additive and idempotent. A second `open` on a projected Grove prints the same `p
 ```
 $ grove-cmux open <root> --window <id> --allow-destructive
 error: E_USAGE (2): open never closes anything, so --allow-destructive has no meaning here
+evidence:
+  command: open
+  flag: --allow-destructive
 try: run grove-cmux sync --allow-destructive to close workspaces whose Tree is gone
 ```
 
@@ -82,6 +87,9 @@ It also refuses a `--` it would silently drop:
 ```
 $ grove-cmux open <root> --window <id> -- x
 error: E_USAGE (2): open takes nothing after "--"
+evidence:
+  command: open
+  after_separator: ["x"]
 try: pass agent arguments to grove-cmux run --tree <tree> -- <args>
 ```
 
@@ -188,22 +196,26 @@ launched tdown3@checkout-api in surface 6AF8F5D7: grove agent run tdown3 --tree 
 
 The trailing `exec "${SHELL:-/bin/zsh}" -l` is required, not decoration: cmux closes a workspace as soon as its launch command exits, so without it the workspace vanishes when the agent finishes, scrollback included.
 
-Refusals come before anything is created:
+A missing `--tree` and an agent grove confirms it does not define are refused before projection. An unknown Tree name is refused after projection, so that failure can leave newly created workspaces; check `grove-cmux status` before retrying:
 
 ```
 $ grove-cmux run <root> --window <id>
 error: E_USAGE (2): run needs --tree <tree>
+evidence:
+  command: run
 try: pass --tree <tree>; grove-cmux status lists the Trees of this Grove
 
 $ grove-cmux run <root> --tree nope --window <id> -- x
 error: E_USAGE (2): grove tdown has no Tree "nope"
 evidence:
+  requested: nope
   trees: ["tdown@checkout-api","tdown@storefront-web"]
 try: use one of: checkout-api, storefront-web
 
 $ grove-cmux run <root> --tree checkout-api --agent nosuch --window <id> -- x
 error: E_PRECONDITION (12): grove defines no agent named "nosuch"
 evidence:
+  agent: nosuch
   defined: ["prover","claude-task"]
 try: use one of: prover, claude-task, or grove agent add nosuch <command>
 ```
@@ -218,7 +230,7 @@ With no `--agent`, the Tree's default grove agent runs.
 
 Read `run`'s reported surface id, workspace id and command. Confirm the configured agent with `grove agent ls` from the correct Grove workspace, then check its configured executable; a listed definition alone does not prove the executable exists or that its authentication works.
 
-cmux resolves the first whitespace-delimited token of `initial_command` as an executable. `export FOO=1; ...`, `{ ... }` and `true; ...` were measured to produce no running command; `grove ...` and `node ...` resolve. Environment belongs in `startup_environment`, not a shell prefix. The generated `run` command starts with `grove`; inspect evidence before blaming it. A surface being created proves routing, not a successful agent response. Inspect that surface and its output, including authentication errors, instead of sending text into an existing terminal that may belong to the user. Do not repeat the task until the earlier launch's state is understood, because another surface can still be running it.
+cmux resolves the first whitespace-delimited token of `initial_command` as an executable. `export FOO=1; ...`, `{ ... }` and `true; ...` were measured to produce no running command; `grove ...` and `node ...` resolve. Environment belongs in `startup_environment`, not a shell prefix. The generated `run` command starts with `grove`, or with `GROVE_BIN` when it is set; inspect evidence before blaming it. A surface being created proves routing, not a successful agent response. Inspect that surface and its output, including authentication errors, instead of sending text into an existing terminal that may belong to the user. Do not repeat the task until the earlier launch's state is understood, because another surface can still be running it.
 
 ## Repeat handoffs
 

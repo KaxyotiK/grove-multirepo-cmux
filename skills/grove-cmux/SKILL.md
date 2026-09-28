@@ -95,7 +95,7 @@ Do not pass `--window`. `close` enumerates every window, locates each ledgered w
 
 A successful default close keeps a cleared ledger: `trees` is `{}` and the group, anchor, and window ids are null. A later `open <root> --window <id>` creates a new projection with new ids. Use `--forget` when the `.grove-cmux` directory should be removed after verified success, such as before archive or permanent deletion.
 
-`--keep-anchor` closes the Tree workspaces and safely ungroups the owned group, leaving the anchor as a plain workspace. It releases ownership of that anchor; a later `open` creates a new anchor and group beside it. A missing group is a successful no-op. A group with foreign members, or an anchor inside a foreign group, is left intact with a warning. Foreign workspaces are never closed. It refuses `E_CMUX_INCOMPATIBLE` before any mutation unless `cmux capabilities` lists `workspace.group.ungroup`; the default close does not need that method.
+`--keep-anchor` closes the Tree workspaces and safely ungroups the owned group, leaving the anchor as a plain workspace. It releases ownership of that anchor; a later `open` creates a new anchor and group beside it. A missing group is a successful no-op. A group with foreign members, or an anchor inside a foreign group, is left intact with a warning. Foreign workspaces are never closed. When it plans to ungroup, it refuses `E_CMUX_INCOMPATIBLE` before any mutation unless `cmux capabilities` lists `workspace.group.ungroup`; the default close does not need that method.
 
 For an active Grove, close before Grove moves or removes the ledger:
 
@@ -106,13 +106,13 @@ grove archive <grove>        # reversible route
 # or: grove delete <grove>   # permanent route, with plain Grove safety checks
 ```
 
-If the Grove is already archived, close `<workspace>/archives/<grove>`. For permanent deletion, restore it without running `grove-cmux open`, then run plain `grove delete`. Never add Grove's `--allow-destructive` to bypass a refusal.
+If the Grove is already archived, close `<workspace>/archives/<grove>` with `--forget`. For permanent deletion, then run plain `grove delete <grove>`, which accepts an archived Grove. Never add Grove's `--allow-destructive-all` to bypass a refusal.
 
 Read `references/teardown.md` for failure recovery, foreign-group behavior, the measured 3 → 2 → 1 → 0 group lifecycle, and the manual RPC fallback for older builds that have no `close`.
 
 ## Refuse these
 
-**`grove delete <grove> --allow-destructive` while the projection is live.** It deletes the root and the ledger and leaves the group, anchor and every Tree workspace alive with nothing naming them. `grove-cmux status` and `grove-cmux sync` then both exit 12 at that path, forever. Recreating the Grove does not recover it — the orphans classify as `foreign` and sync builds a second group beside them. That refusal on `.grove-cmux` is the guard; run `close --forget` first.
+**`grove delete <grove> --allow-destructive-all` while the projection is live.** It deletes the root and the ledger and leaves the group, anchor and every Tree workspace alive with nothing naming them. `grove-cmux status` and `grove-cmux sync` then both exit 12 at that path, forever. Recreating the Grove does not recover it — the orphans classify as `foreign` and sync builds a second group beside them. That refusal on `.grove-cmux` is the guard; run `close --forget` first.
 
 **`--relocate` as a retry for `E_PROJECTION_CONFLICT`.** It builds a second projection in the new window and abandons the first, and the ledger stops naming the abandoned ids. Its own stderr note is the only record. Run against the window in the evidence unless the user actually wants a second copy; if they do, capture the old ids from the ledger before relocating.
 
@@ -130,11 +130,11 @@ Every refusal prints its class, evidence and a `try:` line. Read the `try:` line
 | 3 | `E_CMUX_UNAVAILABLE` | Start cmux. |
 | 4 | `E_CMUX_AUTH` | Set `CMUX_SOCKET_PASSWORD`. Do not retry blind. |
 | 5 | `E_CMUX_TARGET` | Run `grove-cmux status` to list the ids that exist. |
-| 8 | `E_GROVE_FAILED` | Run the command in `args` directly. On `new`, check that `args` carries each grove flag with its value. |
+| 8 | `E_GROVE_FAILED` | Follow `grove_error.remedy` when present; otherwise run the command in `args` directly. On `new`, check that `args` carries each grove flag with its value. |
 | 10 | `E_LEDGER` | Never delete the ledger to clear this. It is the only record of ownership. |
 | 11 | `E_AMBIGUOUS_TARGET` | Pass `--window <id>` from the evidence. |
 | 12 | `E_PRECONDITION` | For a missing Grove root: look in `<workspace>/archives/<grove>` before concluding it is gone. |
-| 13 | `E_PROJECTION_CONFLICT` | Run against the window in the evidence. `--relocate` only on purpose. |
+| 13 | `E_PROJECTION_CONFLICT` | Run against `found_window` from the evidence. If the recorded window no longer exists (no `found_window`), run `grove-cmux close <root>`, then `open --window <id>`. `--relocate` only on purpose. |
 
 `references/refusals.md` has all thirteen with observed messages and recoveries.
 

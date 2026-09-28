@@ -13,7 +13,7 @@ Do not pass `--window`: close enumerates every cmux window, locates each ledgere
 
 The default plan closes every live workspace under `trees`, then the ledger's anchor. Missing ledgered ids need no mutation. It does not ungroup first. cmux promotes another member when an anchor closes, and removes the group only when its last workspace closes; the measured lifecycle is 3 → 2 → 1 → 0.
 
-After close, a second complete read verifies that every ledgered workspace id is absent, including one the first read could not see, and that the owned group is gone unless a foreign workspace holds it. A failed close or failed verification retains the uncleared ledger, even with `--forget`; resolve the reported problem and rerun `close`. If the owned group persists with no foreign member, rerun `close`; should it survive repeated runs, dissolve it with the older-build sequence below and rerun. Do not treat group disappearance or `Workspace not found` as independent proof of workspace absence.
+After close, a second complete read verifies that every ledgered workspace id is absent, including one the first read could not see, and that the owned group is gone unless a foreign workspace holds it. A failed close or failed verification retains the uncleared ledger, even with `--forget`; resolve the reported problem and rerun `close`. If the owned group persists with no foreign member, rerun `close`; should it survive repeated runs, dissolve it with `cmux rpc workspace.group.ungroup '{"window_id":"<evidence.window_id>","group_id":"<evidence.group_id>"}'`, the same call `close --keep-anchor` makes, and rerun. If that call refuses, stop and report both ids rather than deleting the ledger. Do not treat group disappearance or `Workspace not found` as independent proof of workspace absence.
 
 On verified success the default keeps the ledger but clears ownership: `trees` is `{}` and `group_id`, `anchor_workspace_id`, and `window_id` are null. Provenance stays in the ledger. A later `grove-cmux open <root> --window <id>` creates a new projection with new ids.
 
@@ -51,11 +51,11 @@ grove-cmux close <grove-root> --forget
 grove archive <grove>
 ```
 
-For permanent deletion, replace the final command with plain `grove delete <grove>`. Preserve its safety checks and report any refusal; do not add `--allow-destructive`.
+For permanent deletion, replace the final command with plain `grove delete <grove>`. Preserve its safety checks and report any refusal; do not add `--allow-destructive-all`.
 
-If the Grove is already archived, target `<workspace>/archives/<grove>`. Close there with `--forget`; for permanent deletion, restore without running `grove-cmux open`, then run plain `grove delete`. A missing active root can include an `archived_at` path and remedy when a readable, matching archive ledger proves where it moved.
+If the Grove is already archived, target `<workspace>/archives/<grove>`. Close there with `--forget`; for permanent deletion, then run plain `grove delete <grove>`, which accepts archived Groves. A missing active root can include an `archived_at` path and remedy when a readable, matching archive ledger proves where it moved.
 
-`grove delete --allow-destructive` on a live projection destroys the only ownership record while leaving cmux objects alive. Recreating the Grove cannot recover that capability: matching paths remain foreign.
+`grove delete --allow-destructive-all` on a live projection destroys the only ownership record while leaving cmux objects alive. Recreating the Grove cannot recover that capability: matching paths remain foreign.
 
 Close is not a lock against concurrent `open`, relocation, or manual workspace movement. Do not run projection teardown concurrently with those operations.
 
