@@ -490,6 +490,36 @@ test('AC-34: a failed post-close verification withholds --forget and final ledge
       'verification failure cleared anchor ownership',
     );
     assert.equal(world.ledger()!.window_id, before.window_id, 'verification failure cleared window ownership');
+    assert.deepEqual(world.ledger()!.trees, before.trees, 'verification failure dropped Tree ownership');
+  } finally {
+    world.cleanup();
+  }
+});
+
+test('AC-34: a close cmux accepts but the workspace survives keeps that Tree owned, and a retry closes it', () => {
+  const world = makeWorld();
+  try {
+    open(world);
+    const before = world.ledger()!;
+    const [survivorTree, survivorId] = Object.entries(before.trees).sort()[0]!;
+    resetJournal(world);
+
+    const first = runJson(world, ['close', world.root], { FAKE_CMUX_IGNORE_CLOSE: survivorId });
+    assert.equal(first.code, 5, first.stdout + first.stderr);
+    assert.equal(first.json.class, 'E_CMUX_TARGET');
+    assert.equal(first.json.evidence.workspace_id, survivorId);
+    assert.ok(world.state().workspaces[survivorId], 'the fake closed the survivor after all');
+    assert.equal(world.ledger()!.trees[survivorTree], survivorId, 'the live survivor lost its ledger row');
+
+    // cmux behaves again; the retry must find and close our own workspace, not call it foreign.
+    const retry = runJson(world, ['close', world.root]);
+    assert.equal(retry.code, 0, retry.stdout + retry.stderr);
+    assert.equal(world.state().workspaces[survivorId], undefined, 'the retry left the survivor open');
+    assert.deepEqual(world.ledger()!.trees, {});
+    assert.ok(
+      !(retry.json.warnings ?? []).some((w: string) => w.includes(survivorId)),
+      `the retry reported our own workspace as foreign: ${JSON.stringify(retry.json.warnings)}`,
+    );
   } finally {
     world.cleanup();
   }
