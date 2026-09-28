@@ -4,6 +4,8 @@ The repo masters the guest. `gcx-base` is a cache of what these scripts produce,
 
 Verified end to end on 2026-09-23: a fresh clone of `gcx-base` boots, arms its cmux socket, takes the built wrapper, seeds its own fixture, runs all 32 live cases green, and deletes itself.
 
+Rebuilt on 2026-09-28 from `provision-guest.sh` with no grove in the image: a fresh clone installed grove-multirepo 0.1.1 from a local tarball, seeded with it, and ran all 32 live cases green. The rebuilt image has no Claude Code sign-in, so the authenticated-Claude case reports SKIPPED until one is added; see [Optional: agents and real GitHub remotes](#optional-agents-and-real-github-remotes).
+
 ## Local use versus the test guest
 
 The guest deliberately uses Password mode to exercise authentication. For local same-user agents outside cmux, use Automation mode and the [local setup check](../../README.md#local-cmux-setup). The historical password re-arming workaround below applies to this guest setup; it is not a requirement to use grove-cmux locally.
@@ -29,14 +31,15 @@ Keep Tart's home on a fast internal volume, never removable or external storage:
 | --- | --- |
 | macOS | 26.6.2 |
 | cmux | `0.64.22 (102) [ddd4a01bc]` |
-| grove | 0.3.0 |
-| herdr | 0.8.2 |
+| herdr | 0.9.1 |
 | gh | 2.98.0 |
 | node / npm | v24.20.0 / 11.19.0 |
-| Claude Code | 2.1.261 |
-| Codex | 0.153.2 |
+| Claude Code | 2.1.284 |
+| Codex | 0.158.0 |
 
 Node 24 in the guest is the point: it is the version `engines` declares, so the live suite runs the wrapper on its target runtime rather than on the host's Node 26.
+
+The image carries no grove. Every live run installs it fresh; see [Grove in the guest](#grove-in-the-guest).
 
 ## Build the base
 
@@ -51,7 +54,7 @@ tart stop gcx-base
 
 The Cirrus Labs base already carries Homebrew, Xcode CLT, git, Node 24, Python, the Tart guest agent, and auto-login as `admin`.
 
-`provision-guest.sh` adds passwordless sudo, the host's SSH key, cmux from the cask, `gh`, grove from npm (`grove-multirepo`), herdr, Claude Code, Codex, dark mode, `start-cmux.sh`, `seed-fixture.sh`, and then **runs the seed**, so the base it hands back is one the live suite can use immediately.
+`provision-guest.sh` adds passwordless sudo, the host's SSH key, cmux from the cask, `gh`, herdr, Claude Code, Codex, dark mode, and `start-cmux.sh`. It installs no grove and builds no fixture: each live run does both, so the base it hands back is one the live suite can use immediately.
 
 Nothing above is interactive. The guest is usable for acceptance at this point.
 
@@ -77,7 +80,7 @@ tart clone gcx-base gcx-base-authed # or re-freeze in place
 
 ## The fixture
 
-`scripts/seed-fixture.sh` runs in the guest, is offline, and is idempotent. It builds:
+`scripts/seed-fixture.sh` runs in the guest, is offline, and is idempotent. The harness pipes it in from the checkout after installing Grove, and removes `~/work` and `~/fixture-remotes` first, so every run's fixture is written by the grove that run installed and never by an earlier one. It builds:
 
 ```
 ~/fixture-remotes/<repo>.git            one bare repo per fixture repo, one commit each
@@ -93,12 +96,13 @@ It prints one `tree <name> -> <worktree>` line per Tree and ends with `SEED_OK`.
 Override the shape if a case needs a different one:
 
 ```bash
-seed-fixture.sh other-grove repo-a repo-b
+tart exec -i <vm> /bin/bash -s -- other-grove repo-a repo-b < scripts/tart/seed-fixture.sh
 ```
 
 ## Running the live suite
 
 ```bash
+export GROVE_CMUX_GROVE_TARBALL=/path/to/grove-multirepo-<version>.tgz   # see Grove in the guest
 GROVE_CMUX_LIVE_VM=auto npm run test:live
 GROVE_CMUX_LIVE_VM=gcx-run npm run test:live
 npm run test:live                             # skips, and says why
@@ -108,13 +112,26 @@ npm run test:live                             # skips, and says why
 
 The 32 cases take about nine minutes of guest time (measured 2026-09-23), much of it in the restart case, which waits for cmux's session autosave before killing the app.
 
+## Grove in the guest
+
+The image carries no grove. Every run, `auto` or a named guest, installs Grove from a local tarball before it seeds, and never from the npm registry. Make the tarball in a grove-multirepo checkout and pass its path:
+
+```bash
+cd /path/to/grove-multirepo && npm pack          # writes grove-multirepo-<version>.tgz
+GROVE_CMUX_LIVE_VM=auto GROVE_CMUX_GROVE_TARBALL=/path/to/grove-multirepo-<version>.tgz npm run test:live
+```
+
+The harness refuses before cloning a guest when `GROVE_CMUX_GROVE_TARBALL` is unset or does not name a readable `grove-multirepo` tarball. Otherwise it copies the tarball in, installs it with `npm install -g` through `install-grove.sh`, and prints the tarball's version, sha256 and the installed bin. The run fails before any case unless `npm ls -g` shows `grove-multirepo` at the tarball's version, `command -v grove` resolves to that package's own bin both in the harness's shell and in a login shell (the PATH `grove agent run` gets in a cmux terminal), and `grove --version` agrees.
+
 ## Per-run mechanics, if you drive it by hand
 
 ```bash
 tart clone gcx-base gcx-run
 tart run gcx-run &
 tart exec gcx-run /bin/sh -lc '~/.local/bin/start-cmux.sh'
-tart exec gcx-run /bin/sh -lc '~/.local/bin/seed-fixture.sh'
+base64 < /path/to/grove-multirepo-<version>.tgz | tart exec -i gcx-run /bin/bash -c 'base64 -d > /tmp/grove-multirepo.tgz'
+tart exec -i gcx-run /usr/bin/env GROVE_TARBALL=/tmp/grove-multirepo.tgz /bin/bash -s < scripts/tart/install-grove.sh
+tart exec -i gcx-run /bin/bash -s < scripts/tart/seed-fixture.sh
 # … drive cmux over `tart exec` …
 tart stop gcx-run
 tart delete gcx-run
@@ -141,8 +158,9 @@ All of them live under `$TART_HOME/vms`, which is `~/.tart/vms` by default. `du`
 
 | Script | Side | Purpose |
 | --- | --- | --- |
-| `provision-guest.sh` | host | a cloned OCI base becomes a provisioned, seeded guest |
-| `seed-fixture.sh` | guest | build the Grove fixture, offline and idempotent |
+| `provision-guest.sh` | host | a cloned OCI base becomes a provisioned guest, with no grove and no fixture |
+| `install-grove.sh` | guest | install `grove-multirepo` from the tarball at `GROVE_TARBALL` and report what resolves; the live harness copies the tarball in and pipes it on every run |
+| `seed-fixture.sh` | guest | build the Grove fixture, offline and idempotent; the live harness pipes it in on every run |
 | `start-cmux.sh` | guest | launch cmux into the GUI session and arm the socket; prints `PONG`. The live harness pipes it in from this checkout on every boot |
 | `exec-guest.sh` | host | `tart exec` with retry, for driving a guest by hand |
 

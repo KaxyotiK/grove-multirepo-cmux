@@ -16,6 +16,7 @@
 
 import { execFileSync, spawn } from 'node:child_process';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -24,6 +25,73 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO = join(HERE, '..', '..');
 const SEED_SCRIPT = join(REPO, 'scripts', 'tart', 'seed-fixture.sh');
 const START_CMUX_SCRIPT = join(REPO, 'scripts', 'tart', 'start-cmux.sh');
+const INSTALL_GROVE_SCRIPT = join(REPO, 'scripts', 'tart', 'install-grove.sh');
+const GROVE_PACKAGE = 'grove-multirepo';
+
+/**
+ * The Grove a live run installs: the grove-multirepo tarball GROVE_CMUX_GROVE_TARBALL names on
+ * the host. There is no registry fallback, so a run tests exactly the build it was handed. A
+ * missing or foreign tarball is refused here, before a guest is cloned.
+ */
+export function groveRequest(env = process.env) {
+  const path = env.GROVE_CMUX_GROVE_TARBALL;
+  if (!path) {
+    throw new Error(
+      'GROVE_CMUX_GROVE_TARBALL is not set, so there is no Grove to install in the guest. ' +
+        'Make one with `npm pack` in a grove-multirepo checkout and set ' +
+        'GROVE_CMUX_GROVE_TARBALL to the grove-multirepo-<version>.tgz it writes.',
+    );
+  }
+  let bytes;
+  let pkg;
+  try {
+    bytes = readFileSync(path);
+    pkg = JSON.parse(
+      execFileSync('tar', ['-xzOf', path, 'package/package.json'], { encoding: 'utf8' }),
+    );
+  } catch (e) {
+    throw new Error(`GROVE_CMUX_GROVE_TARBALL is not a readable npm tarball: ${path}: ${e.message}`);
+  }
+  if (pkg.name !== GROVE_PACKAGE) {
+    throw new Error(
+      `GROVE_CMUX_GROVE_TARBALL holds ${pkg.name}@${pkg.version}, not ${GROVE_PACKAGE}: ${path}`,
+    );
+  }
+  return {
+    path,
+    version: pkg.version,
+    sha256: createHash('sha256').update(bytes).digest('hex'),
+  };
+}
+
+/**
+ * Judge install-grove.sh's report against the tarball. The run fails unless npm lists
+ * grove-multirepo at the tarball's version, `command -v grove` (here and in a login shell)
+ * resolves to that package's own bin, and `grove --version` agrees.
+ */
+export function checkGroveInstall(request, out) {
+  const m = /^GROVE_INSTALL (\{.*\})\s*$/m.exec(out);
+  if (!m) throw new Error(`installing grove failed; guest said: ${out}`);
+  const r = JSON.parse(m[1]);
+  const wanted = request.version;
+  const problems = [];
+  if (r.npm_ls_version !== wanted) {
+    problems.push(`npm ls -g shows ${GROVE_PACKAGE}@${r.npm_ls_version ?? 'nothing'}, not ${wanted}`);
+  }
+  if (!r.package_bin) problems.push(`${GROVE_PACKAGE} has no grove bin`);
+  for (const [label, got] of [['command -v grove', r.command_v], ["a login shell's command -v grove", r.login_command_v]]) {
+    if (got !== r.package_bin) {
+      problems.push(`${label} resolves to ${got ?? 'nothing'}, not ${r.package_bin}`);
+    }
+  }
+  if (r.grove_version !== wanted) {
+    problems.push(`grove --version prints ${r.grove_version ?? 'nothing'}, not ${wanted}`);
+  }
+  if (problems.length > 0) {
+    throw new Error(`the guest's grove is not the tarball's: ${problems.join('; ')}\n${out}`);
+  }
+  return { ...r, version: wanted };
+}
 
 /**
  * Launch cmux and arm its socket, from this repo's start-cmux.sh rather than a copy baked into the
@@ -150,20 +218,38 @@ base64 -d < /tmp/gcx.b64 | tar xzf -
       return version;
     },
 
-    /**
-     * Build the Grove fixture the cases run against.
-     *
-     * The frozen base carries the tools and no test data, so without this the suite only ran
-     * on a guest somebody had built by hand — which is not a suite that re-runs itself. The
-     * seed is offline and idempotent, so it costs nothing on a guest that already has it.
-     */
     startCmux() {
       return startCmux(vm);
     },
 
+    /**
+     * Copy the requested grove-multirepo tarball in and install it, before seeding. The image
+     * carries no grove, so a run tests the Grove it names. Returns the checked install report.
+     */
+    installGrove(request = groveRequest()) {
+      const b64 = readFileSync(request.path).toString('base64');
+      const out = guestExec(
+        vm,
+        `rm -f /tmp/grove-multirepo.tgz
+base64 -d > /tmp/grove-multirepo.tgz <<'B64EOF'
+${b64}
+B64EOF
+export GROVE_TARBALL=/tmp/grove-multirepo.tgz
+${readFileSync(INSTALL_GROVE_SCRIPT, 'utf8')}`,
+        { timeoutMs: 600000 },
+      );
+      return checkGroveInstall(request, out);
+    },
+
+    /**
+     * Build the Grove fixture the cases run against, always from scratch.
+     *
+     * The workspace and its remotes are removed first, so the fixture is written by the grove
+     * installGrove just put there and never by one an earlier run or the image used.
+     */
     seed() {
       const script = readFileSync(SEED_SCRIPT, 'utf8');
-      const out = guestExec(vm, script);
+      const out = guestExec(vm, `rm -rf "$HOME/work" "$HOME/fixture-remotes"\n${script}`);
       if (!out.includes('SEED_OK')) {
         throw new Error(`seeding the Grove fixture failed; guest said: ${out}`);
       }
