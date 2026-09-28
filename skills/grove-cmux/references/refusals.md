@@ -17,24 +17,36 @@ Bad flag, missing argument, unknown command. The `try:` line always names the co
 ```
 $ grove-cmux run <root> --window <id>
 error: E_USAGE (2): run needs --tree <tree>
+evidence:
+  command: run
 try: pass --tree <tree>; grove-cmux status lists the Trees of this Grove
 
 $ grove-cmux run <root> --tree nope --window <id> -- x
 error: E_USAGE (2): grove tdown has no Tree "nope"
 evidence:
+  requested: nope
   trees: ["tdown@checkout-api","tdown@storefront-web"]
 try: use one of: checkout-api, storefront-web
 
 $ grove-cmux open <root> --window <id> -- x
 error: E_USAGE (2): open takes nothing after "--"
+evidence:
+  command: open
+  after_separator: ["x"]
 try: pass agent arguments to grove-cmux run --tree <tree> -- <args>
 
 $ grove-cmux open <root> --window <id> --allow-destructive
 error: E_USAGE (2): open never closes anything, so --allow-destructive has no meaning here
+evidence:
+  command: open
+  flag: --allow-destructive
 try: run grove-cmux sync --allow-destructive to close workspaces whose Tree is gone
 
 $ grove-cmux close <root> --window <id>
 error: E_USAGE (2): close does not accept --window
+evidence:
+  command: close
+  flag: --window
 try: run grove-cmux close without --window; close finds each ledgered workspace itself
 ```
 
@@ -73,20 +85,21 @@ Each command requires only the methods it calls. `close --keep-anchor` is strict
 
 ## 8 — `E_GROVE_FAILED` (observed)
 
-grove exited non-zero, or its binary is not on PATH. Run the command in `args` directly and fix what grove reports.
+grove exited non-zero, or its binary is not on PATH. When grove refused with a JSON error, the message names what it refused and `grove_error` carries grove's own reason and remedy.
 
 ```
 $ grove-cmux new tdown --repo nosuch --window <id>
-error: E_GROVE_FAILED (8): grove exited non-zero
+error: E_GROVE_FAILED (8): grove refused: No unique repository "nosuch"
 evidence:
   bin: grove
   args: ["--json","new","tdown","--repo","nosuch"]
   exit_code: 2
   stderr: —
+  grove_error: {"kind":"invalid-input","what":"No unique repository \"nosuch\"","why":"the selector matched 0 registrations","remedy":"Run `grove repo ls` and use one exact ID or alias.","exitCode":2}
 try: run the grove command in the evidence directly and fix what it reports
 ```
 
-Check the `args` line before anything else: it is exactly what grove received. Run it yourself to see grove's reason; here `grove --json new tdown --repo nosuch` answers `No unique repository "nosuch"`, and `grove repo ls` lists the ones that exist.
+Check the `args` line before anything else: it is exactly what grove received. Then follow `grove_error.remedy`; here `grove repo ls` lists the repositories that exist. Without a `grove_error`, run the `args` command yourself to see grove's reason.
 
 ## 9 — `E_GROVE_SCHEMA`
 
@@ -123,6 +136,8 @@ The world cannot host the command.
 ```
 $ grove-cmux status ~/work/groves/tdown2 --window <id>
 error: E_PRECONDITION (12): the Grove root does not exist: /Users/admin/work/groves/tdown2
+evidence:
+  grove_root: /Users/admin/work/groves/tdown2
 try: check the path in the evidence exists and is a Grove
 
 $ grove-cmux run <root> --tree checkout-api --agent nosuch --window <id> -- x
@@ -162,3 +177,16 @@ created 1 group; created 1 workspace
 ```
 
 Use it only when the user wants a second copy, and capture the old ids from the ledger first.
+
+When the recorded window itself is gone and none of the Grove's workspaces can be found, there is no window to run against, and the evidence has no `found_window`:
+
+```
+$ grove-cmux open <root> --window <WB>
+error: E_PROJECTION_CONFLICT (13): the window this grove was projected into (4ED3D11E-…) no longer exists, and none of its workspaces were found
+evidence:
+  recorded_window: 4ED3D11E-…
+  requested_window: 83C680E9-…
+try: pass --relocate to re-project here; nothing in the old window is closed
+```
+
+Run `grove-cmux close <root>` first: it finds nothing live to close and clears the ledger. Then `grove-cmux open <root> --window <WB>` projects fresh.
