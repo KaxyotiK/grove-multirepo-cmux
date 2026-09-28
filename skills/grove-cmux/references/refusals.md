@@ -4,7 +4,7 @@ Every refusal prints three parts: a class line with its exit code, an evidence b
 
 Exit codes are a contract. A code never means two things. An unclassified failure exits 1 and is a bug worth reporting.
 
-Messages marked **observed** were reproduced in the `gcx-run` guest on 2026-09-06. The rest are the class definitions from the tool's own taxonomy.
+Messages marked **observed** were reproduced in the `gcx-run` guest on 2026-09-06, except the `E_GROVE_FAILED` example, captured against grove-multirepo 0.1.1 on 2026-09-28. The rest are the class definitions from the tool's own taxonomy.
 
 ## 1 — `E_INTERNAL`
 
@@ -143,6 +143,7 @@ try: check the path in the evidence exists and is a Grove
 $ grove-cmux run <root> --tree checkout-api --agent nosuch --window <id> -- x
 error: E_PRECONDITION (12): grove defines no agent named "nosuch"
 evidence:
+  agent: nosuch
   defined: ["prover","claude-task"]
 try: use one of: prover, claude-task, or grove agent add nosuch <command>
 ```
@@ -165,6 +166,7 @@ evidence:
   found_window: 4ED3D11E-…
   requested_window: 83C680E9-…
   workspaces_found: 2
+  group_id: <group id>
 try: run against window 4ED3D11E-…, or pass --relocate to re-project here and leave that window alone
 ```
 
@@ -189,4 +191,4 @@ evidence:
 try: pass --relocate to re-project here; nothing in the old window is closed
 ```
 
-Run `grove-cmux close <root>` first: it finds nothing live to close and clears the ledger. Then `grove-cmux open <root> --window <WB>` projects fresh.
+Run `grove-cmux close <root>` first: it finds nothing live to close and clears the ledger. Once that close succeeds, `grove-cmux open <root> --window <WB>` projects fresh. If close refuses, handle that refusal instead.

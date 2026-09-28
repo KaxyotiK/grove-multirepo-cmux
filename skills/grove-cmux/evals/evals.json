@@ -262,12 +262,11 @@
     {
       "id": 23,
       "prompt": "I already archived the tdown Grove. Its cmux workspaces are still open. Now delete it permanently.",
-      "expected_output": "Close the archive path with --forget, restore without opening a projection, then attempt plain grove delete.",
+      "expected_output": "Close the archive path with --forget, then run plain grove delete, which accepts an archived Grove.",
       "files": [],
       "expectations": [
         "grove-cmux close <workspace>/archives/tdown --dry-run --forget is followed by the live close.",
         "A close failure or unreadable window preserves the archive ledger and halts deletion.",
-        "grove restore tdown returns the root and grove-cmux open is not run.",
         "Plain grove delete is used with its safety checks intact; any refusal is reported without --allow-destructive-all.",
         "No raw cmux close or manual ledger removal is used on the current build."
       ]

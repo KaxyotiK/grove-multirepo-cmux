@@ -196,7 +196,7 @@ launched tdown3@checkout-api in surface 6AF8F5D7: grove agent run tdown3 --tree 
 
 The trailing `exec "${SHELL:-/bin/zsh}" -l` is required, not decoration: cmux closes a workspace as soon as its launch command exits, so without it the workspace vanishes when the agent finishes, scrollback included.
 
-Refusals come before anything is created:
+A missing `--tree` and an agent grove confirms it does not define are refused before projection. An unknown Tree name is refused after projection, so that failure can leave newly created workspaces; check `grove-cmux status` before retrying:
 
 ```
 $ grove-cmux run <root> --window <id>
@@ -215,6 +215,7 @@ try: use one of: checkout-api, storefront-web
 $ grove-cmux run <root> --tree checkout-api --agent nosuch --window <id> -- x
 error: E_PRECONDITION (12): grove defines no agent named "nosuch"
 evidence:
+  agent: nosuch
   defined: ["prover","claude-task"]
 try: use one of: prover, claude-task, or grove agent add nosuch <command>
 ```
