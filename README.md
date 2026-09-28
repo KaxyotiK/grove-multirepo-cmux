@@ -114,7 +114,7 @@ A Grove's group carries the Grove icon and colour in its header, and each Tree w
 
 ```
 npm run verify                              # typecheck, build, offline cases, acceptance record
-GROVE_CMUX_LIVE_VM=auto npm run test:live   # 32 cases against a real cmux in a Tart guest
+GROVE_CMUX_LIVE_VM=auto GROVE_CMUX_GROVE_TARBALL=<grove-multirepo.tgz> npm run test:live   # 32 cases against a real cmux in a Tart guest
 ```
 
 The offline suite needs nothing but Node: it builds its Grove fixtures with plain `git init` and talks to a fake cmux, so no cmux, Grove or VM is involved.
@@ -123,7 +123,7 @@ Every test names the acceptance criterion it proves; the criteria are in [`test/
 
 `test:live` clones the frozen guest, boots it, arms the socket, deploys the build, runs, and deletes the clone. Without `GROVE_CMUX_LIVE_VM` it skips and says why.
 
-It expects a Tart VM named `gcx-base` holding macOS, cmux and Grove. That image is built locally, not distributed — [`scripts/tart/README.md`](scripts/tart/README.md) describes how, and the scripts beside it do it. Without it the live suite skips; the offline suite is unaffected.
+It expects a Tart VM named `gcx-base` holding macOS and cmux. Each run installs Grove into the guest from the local `grove-multirepo` tarball `GROVE_CMUX_GROVE_TARBALL` names (make one with `npm pack` in a grove-multirepo checkout) and builds its fixture with it. That image is built locally, not distributed — [`scripts/tart/README.md`](scripts/tart/README.md) describes how, and the scripts beside it do it. Without it the live suite skips; the offline suite is unaffected.
 
 ## License
 

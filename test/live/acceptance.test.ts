@@ -11,7 +11,7 @@
 
 import { after, before, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { acquireGuest, liveVmSetting, SKIP_REASON } from '../helpers/guest.mjs';
+import { acquireGuest, groveRequest, liveVmSetting, SKIP_REASON } from '../helpers/guest.mjs';
 
 type Guest = Awaited<ReturnType<typeof acquireGuest>>;
 
@@ -21,10 +21,17 @@ const GROVE = '/Users/admin/work/groves/feat-checkout';
 
 before(async () => {
   if (!liveVmSetting()) return;
+  // Resolved first, so a missing or foreign tarball refuses before a guest is cloned.
+  const request = groveRequest();
   guest = await acquireGuest();
   if (!guest) return;
   guest.deploy();
-  // The frozen base carries tools and no data, so the fixture is built rather than assumed.
+  // The base carries no grove and no data: install the requested Grove, then build the fixture
+  // with it.
+  const grove = guest.installGrove(request);
+  console.log(
+    `grove-multirepo ${grove.version} from ${request.path} (sha256 ${request.sha256}) at ${grove.package_bin}`,
+  );
   guest.seed();
   windowId = guest.windowId();
 });
