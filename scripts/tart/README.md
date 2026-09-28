@@ -96,7 +96,7 @@ It prints one `tree <name> -> <worktree>` line per Tree and ends with `SEED_OK`.
 Override the shape if a case needs a different one:
 
 ```bash
-seed-fixture.sh other-grove repo-a repo-b
+tart exec -i <vm> /bin/bash -s -- other-grove repo-a repo-b < scripts/tart/seed-fixture.sh
 ```
 
 ## Running the live suite
