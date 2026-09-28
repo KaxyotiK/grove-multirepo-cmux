@@ -169,12 +169,20 @@ export class GroveRunner {
           'install grove, or set GROVE_BIN to its path',
         );
       }
-      throw new GroveCmuxError('E_GROVE_FAILED', 'grove exited non-zero', {
-        bin: this.bin,
-        args: ['--json', ...args],
-        exit_code: typeof err.code === 'number' ? err.code : null,
-        stderr: (err.stderr ?? '').toString().trim().slice(0, 2000) || null,
-      });
+      // `grove --json` reports a refusal as {"error":{…}} on stdout and writes nothing to
+      // stderr, so without reading stdout the evidence carried no reason at all.
+      const groveError = groveJsonError((err.stdout ?? '').toString());
+      throw new GroveCmuxError(
+        'E_GROVE_FAILED',
+        groveError?.what ? `grove refused: ${groveError.what}` : 'grove exited non-zero',
+        {
+          bin: this.bin,
+          args: ['--json', ...args],
+          exit_code: typeof err.code === 'number' ? err.code : null,
+          stderr: (err.stderr ?? '').toString().trim().slice(0, 2000) || null,
+          ...(groveError ? { grove_error: groveError } : {}),
+        },
+      );
     }
     return parseGroveJson(stdout, ['--json', ...args]);
   }
@@ -235,6 +243,17 @@ export class GroveRunner {
 export interface GroveAgent {
   name: string;
   available: boolean;
+}
+
+/** The `error` object of a `grove --json` refusal, or null when stdout is not one. */
+export function groveJsonError(stdout: string): Record<string, unknown> | null {
+  try {
+    const parsed = JSON.parse(stdout.trim()) as { error?: unknown };
+    const e = parsed?.error;
+    return e && typeof e === 'object' && !Array.isArray(e) ? (e as Record<string, unknown>) : null;
+  } catch {
+    return null;
+  }
 }
 
 export function parseGroveJson(stdout: string, args: string[]): GroveJson {

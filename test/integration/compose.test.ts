@@ -117,6 +117,36 @@ test('AC-11: a grove that exits non-zero refuses E_GROVE_FAILED with its stderr'
   }
 });
 
+test('AC-13: a grove --json refusal on stdout reaches the E_GROVE_FAILED evidence and message', () => {
+  const w = makeWorld({ trees: [] });
+  try {
+    // grove --json reports a refusal as a JSON error on stdout, exits 2, and writes no stderr.
+    const bin = join(w.base, 'refusing-grove');
+    const refusal = {
+      error: {
+        kind: 'invalid-input',
+        what: 'No unique repository "nosuch"',
+        why: 'the selector matched 0 registrations',
+        remedy: 'Run `grove repo ls` and use one exact ID or alias.',
+        exitCode: 2,
+      },
+    };
+    writeFileSync(bin, `#!/bin/sh\necho '${JSON.stringify(refusal)}'\nexit 2\n`, { mode: 0o755 });
+    const r = runJson(w, ['new', 'nope', '--repo', 'nosuch'], { GROVE_BIN: bin });
+    assert.equal(r.code, 8);
+    assert.equal(r.json.class, 'E_GROVE_FAILED');
+    assert.deepEqual(r.json.evidence.grove_error, refusal.error);
+    assert.match(r.json.message, /No unique repository "nosuch"/);
+
+    const human = run(w, ['new', 'nope', '--repo', 'nosuch'], { GROVE_BIN: bin });
+    assert.equal(human.code, 8);
+    assert.match(human.stderr + human.stdout, /No unique repository "nosuch"/);
+    assert.match(human.stderr + human.stdout, /grove repo ls/);
+  } finally {
+    w.cleanup();
+  }
+});
+
 test('AC-12: an agent launches only when asked, in its own Tree, as part of the create', () => {
   const w = makeWorld();
   try {
