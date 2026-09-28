@@ -1,0 +1,52 @@
+{
+  "name": "grove-multirepo-cmux",
+  "version": "0.1.0",
+  "description": "Project a Grove and its Trees into cmux native workspace groups",
+  "license": "MIT",
+  "author": "KaxyotiK",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/KaxyotiK/grove-multirepo-cmux.git"
+  },
+  "homepage": "https://github.com/KaxyotiK/grove-multirepo-cmux#readme",
+  "bugs": {
+    "url": "https://github.com/KaxyotiK/grove-multirepo-cmux/issues"
+  },
+  "keywords": [
+    "cmux",
+    "grove",
+    "git-worktree",
+    "workspace",
+    "monorepo",
+    "cli"
+  ],
+  "type": "module",
+  "bin": {
+    "grove-cmux": "dist/cli.js"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "npm run clean && tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test:module": "node --test 'test/module/*.test.ts'",
+    "test:cli": "node --test 'test/cli/*.test.ts'",
+    "test:integration": "node --test 'test/integration/*.test.ts'",
+    "test:live": "node --test 'test/live/*.test.ts'",
+    "test": "node --test 'test/module/*.test.ts' 'test/cli/*.test.ts' 'test/integration/*.test.ts'",
+    "verify": "npm run typecheck && npm run build && npm test && npm run verify:acceptance",
+    "verify:acceptance": "node scripts/verify-acceptance.mjs",
+    "clean": "rm -rf dist",
+    "prepublishOnly": "npm run verify"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0",
+    "@types/node": "^24.0.0"
+  }
+}

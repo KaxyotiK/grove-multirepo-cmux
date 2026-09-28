@@ -1,0 +1,40 @@
+# Acceptance criteria
+
+What grove-cmux must do, stated as checkable criteria. Every test that proves one names its id (`AC-07: …`), and `npm run verify:acceptance` fails if a criterion here has no test or a test names an id that is not here.
+
+The live cases in `test/live/` prove the ones that need a real cmux; see [`scripts/tart/README.md`](../scripts/tart/README.md).
+
+- **AC-01:** WHEN the packed package is installed in a clean temporary prefix THEN `grove-cmux --help`, `--version`, and all four command help pages work without a live cmux.
+- **AC-02:** WHEN `status [grove]` observes representative topology THEN it classifies present, missing, extra, and ambiguous objects, in human and JSON form, issuing only read calls.
+- **AC-03:** WHEN a clean two-Tree Grove is opened THEN exactly one group is created with an anchor at the Grove root and one member per Tree, each at that Tree's worktree.
+- **AC-04:** WHEN `open` or `sync` is repeated THEN it resolves the same objects, creates nothing, and leaves the window's `selected_workspace_id` unchanged.
+- **AC-05:** WHEN a Tree is added through Grove and `sync` runs THEN exactly one member is created and no existing object is touched.
+- **AC-06:** WHEN a Tree is removed through Grove THEN a default `sync` leaves its workspace in place and reports it stale, and only `--allow-destructive` closes it.
+- **AC-07:** WHEN an empty Grove is opened THEN an anchor-only group is created or reused.
+- **AC-08:** WHEN candidates are duplicated or foreign THEN the wrapper reports them, never adopts them, and reclaims only workspaces the ledger names. A split needs no disambiguator because reclaiming names only our own ids.
+- **AC-09:** WHEN commands run with default and explicit `--window` THEN every mutation carries an explicit `window_id`, and before/after selection evidence is unchanged.
+- **AC-10:** WHEN a mutation fails after successful creates THEN the partial result is reported with the ledger updated to what actually exists, and a rerun creates only the remainder.
+- **AC-11:** WHEN `new` receives Grove and wrapper options THEN it forwards non-wrapper argv to `grove --json new` and projects only completed outcomes.
+- **AC-12:** WHEN an agent is explicitly requested THEN `grove agent run` starts in the intended Tree, and the workspace survives its exit.
+- **AC-13:** WHEN dependencies, capabilities, versions, schemas, or Grove outcomes are unusable THEN the wrapper refuses with actionable, classified evidence.
+- **AC-14:** WHEN equivalent commands use human and `--json` output THEN both render the same decisions.
+- **AC-15:** WHEN any normal command runs THEN it never invokes sidebar, Dock, settings, hook, or shortcut surfaces.
+- **AC-16:** WHEN cmux is quit and relaunched THEN the wrapper re-identifies its objects from the ledger, or refuses without adopting foreign ones.
+- **AC-17:** WHEN the final branch is verified from a clean install THEN build, typecheck, tests, packaging, and the acceptance record all pass.
+- **AC-18:** WHEN the wrapper records a cmux version THEN it records build number and commit hash, refuses `E_CMUX_INCOMPATIBLE` if a required method is absent or the build is below the declared minimum, and otherwise warns on a bare build difference rather than refusing.
+- **AC-19:** WHEN a person edits a projected workspace's title or description, or `cd`s out of a Tree inside its terminal, THEN the next `open` still recognises that workspace and creates no duplicate.
+- **AC-20:** WHEN the ledger is missing or stale THEN adoption proceeds only by git worktree resolution, and any workspace whose worktree does not match a Tree is left untouched.
+- **AC-21:** WHEN a task is handed to an agent in a Tree of a Grove that is ALREADY projected THEN the agent runs in that Tree's worktree with its arguments intact, the workspace the ledger names is reused rather than created, and a second handoff to the same Tree runs as well as the first.
+- **AC-22:** WHEN the fake cmux closes the last workspace of a group THEN that group is absent from `workspace.group.list`, AND WHEN it closes a group's anchor while other members remain THEN a remaining member is reported as that group's anchor.
+- **AC-23:** WHEN `grove-cmux close` runs against a projected Grove THEN every workspace the ledger names is gone from `workspace.list`, the group is gone from `workspace.group.list`, and re-reading the ledger through `readLedger` yields `trees` `{}` with `group_id`, `anchor_workspace_id` and `window_id` all null.
+- **AC-24:** WHEN `grove-cmux close` runs where no ledger exists THEN it exits 12 `E_PRECONDITION` and its call journal contains no mutating method.
+- **AC-25:** WHEN `grove-cmux close` runs THEN every mutating call it issues names an id that was present in the ledger before the command began, and no ledger row appears that the run did not create.
+- **AC-26:** WHEN a workspace the ledger does not name is a member of our group THEN `close` leaves that workspace open, the group survives holding it, and the report says the group outlived the plan and why.
+- **AC-27:** WHEN `--forget` is passed and every planned close succeeded THEN `<grove-root>/.grove-cmux` no longer exists, AND WHEN any planned close failed THEN the directory still exists and its ledger still names every object that is still live.
+- **AC-28:** WHEN `--keep-anchor` is passed AND the ledger's group exists AND the ledger's anchor is live and is a member of that group AND the group's live members are a subset of the ledger's Tree ids plus that anchor THEN every member the ledger names is closed, that group is gone from `workspace.group.list`, and the anchor workspace is still open and in no group. The anchor clause is not redundant with the subset clause: a group holding only ledgered Tree ids satisfies the subset while the anchor sits in a different group, and no ungroup of our group could then leave the anchor ungrouped.
+- **AC-29:** WHEN `close --dry-run` runs THEN its call journal contains no mutating method, and the `actions` array it prints is equal to the one the subsequent live run executes.
+- **AC-30:** WHEN a command targets a Grove root that does not exist AND a readable ledger is present at `<workspace>/archives/<name>` THEN the refusal's evidence carries that path and its remedy names it, AND WHEN no such ledger is present THEN the refusal's message, evidence and remedy are those of the plain missing-root refusal.
+- **AC-31:** WHEN `open`, `sync`, `status`, `new` and `run` are exercised against the worlds the existing suite builds THEN their exit codes and rendered output are unchanged, the sole exception being the archived-root refusal AC-30 governs.
+- **AC-32:** WHEN the workspaces the ledger names live in a window other than the one the resolution ladder would pick, or are spread across more than one window, THEN `close` closes each of them in the window that actually holds it, and never refuses `E_PROJECTION_CONFLICT`.
+- **AC-33:** WHEN `--keep-anchor` is passed AND the ledger names no group that still exists THEN the ungroup is a no-op, `close` exits 0, and the report says the group was already gone. WHEN the ledger's group exists but holds any member the ledger does not name THEN that group is left intact, no ungroup is issued, `close` exits 0 with a warning naming the foreign member, and the `actions` array contains no `group.ungroup`. WHEN the ledger's anchor is a member of a group other than the ledger's THEN the anchor is retained, no operation names that group's id and none names the retained anchor, and the report warns which group holds it.
+- **AC-34:** WHEN any `workspace.list` or `workspace.group.list` read `close` needs fails THEN `close` refuses `E_CMUX_TARGET` naming the window before issuing any mutating call, and the ledger file's bytes on disk are unchanged. WHEN a post-close verification read fails THEN the ledger is neither cleared nor removed, whatever flags were passed.

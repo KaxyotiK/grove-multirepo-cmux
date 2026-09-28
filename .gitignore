@@ -1,0 +1,9 @@
+node_modules/
+dist/
+*.tgz
+
+# Local skill benchmark scratch space
+skills/grove-cmux-workspace/
+
+# local run artifacts from live/VM sessions
+.runtime/

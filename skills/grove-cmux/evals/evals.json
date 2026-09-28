@@ -1,0 +1,348 @@
+{
+  "skill_name": "grove-cmux",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Open the feat-checkout Grove in cmux.",
+      "expected_output": "The grove-cmux skill is selected and grove-cmux open is run against the Grove root with an explicit window.",
+      "files": [],
+      "expectations": [
+        "The grove-cmux skill is selected on the wording 'open ... in cmux' without the tool being named.",
+        "grove-cmux open is used rather than raw cmux workspace or group calls.",
+        "A window is named explicitly, or the response establishes that exactly one cmux window is open."
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "I want to close the cmux workspaces for the feat-checkout Grove. I'm done with it for today.",
+      "expected_output": "The skill is selected and grove-cmux close is previewed and run without --forget, keeping the Grove and its worktrees on disk.",
+      "files": [],
+      "expectations": [
+        "The grove-cmux skill is selected on 'close the cmux workspaces for the Grove'.",
+        "grove-cmux close <root> --dry-run is shown before grove-cmux close <root>.",
+        "No archive, delete, --forget, --window, or raw cmux RPC is introduced because 'done for today' does not imply disk cleanup.",
+        "The retained cleared ledger and a later grove-cmux open creating new projection ids are explained."
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "How do I create a new Grove with trees in api and web?",
+      "expected_output": "This is a grove CLI question, so the grove-cmux skill is not the one that answers it.",
+      "files": [],
+      "expectations": [
+        "The grove-cmux skill is not selected merely because the word Grove appears.",
+        "grove new is the command discussed, not grove-cmux new, unless the user also asked for it in cmux.",
+        "No cmux projection work is performed unprompted."
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Delete the spike-realtime Grove. It's currently open in cmux.",
+      "expected_output": "grove delete --allow-destructive is refused; grove-cmux close --forget runs first, followed by plain grove delete.",
+      "files": [],
+      "expectations": [
+        "grove delete --allow-destructive is not run while the projection is live.",
+        "grove-cmux close <root> --dry-run --forget precedes grove-cmux close <root> --forget.",
+        "Only after close verifies every ledgered id absent and removes .grove-cmux is plain grove delete run.",
+        "No archive or raw cmux workspace close is introduced for the active Grove.",
+        "Any close read, mutation, verification, or ledger-write failure retains the ledger and halts deletion.",
+        "Plain grove delete's own safety refusal is preserved and reported without adding --allow-destructive."
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "Archive the fix-auth-timeout Grove and clean up its cmux workspaces.",
+      "expected_output": "grove-cmux close --forget is previewed and completed at the active root before grove archive runs.",
+      "files": [],
+      "expectations": [
+        "grove-cmux close <root> --dry-run --forget is shown before the live close.",
+        "The successful close removes .grove-cmux only after verified absence.",
+        "grove archive runs after close, while the Grove is still at the active root during projection cleanup.",
+        "No raw cmux RPC or archive-first workaround is used with the shipped close command."
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "I ran grove-cmux sync --allow-destructive and every Tree workspace closed, but the group and one workspace called feat-checkout are still there. Is that a bug?",
+      "expected_output": "It is deliberate sync behavior: the remaining workspace is the anchor; use grove-cmux close to finish the projection.",
+      "files": [],
+      "expectations": [
+        "The remaining workspace is identified as the anchor at the Grove root.",
+        "sync --allow-destructive is described as deliberately preserving the anchor and group.",
+        "grove-cmux close <root> --dry-run followed by grove-cmux close <root> is offered to finish.",
+        "No raw workspace.close call is used on a current build."
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "grove-cmux status says the Grove root does not exist and exits 12, but I never deleted anything.",
+      "expected_output": "Use the archived_at evidence and remedy when present; otherwise keep the exact generic missing-root refusal.",
+      "files": [],
+      "expectations": [
+        "If evidence contains archived_at, grove-cmux is run against that exact archive path.",
+        "The archive hint is trusted only when a readable ledger for the same Grove proves it.",
+        "A missing, malformed, unreadable, or wrong-name archive ledger is treated as absent evidence rather than E_LEDGER.",
+        "Archive is not assumed when archived_at is absent."
+      ]
+    },
+    {
+      "id": 8,
+      "prompt": "grove-cmux open refused with E_PROJECTION_CONFLICT (13) naming another window. Just pass --relocate.",
+      "expected_output": "Explain relocation and its abandoned objects, capture old ids, and honor an explicit relocation choice without treating it as a harmless retry.",
+      "files": [],
+      "expectations": [
+        "--relocate is not treated as a retry of the failed command.",
+        "It is stated that --relocate creates a second projection and leaves the first window's group, anchor and Tree workspaces open and no longer named by the ledger.",
+        "The old ids are captured from the ledger before relocating; an explicit informed user choice is honored without requiring redundant approval.",
+        "Running against the window named in the evidence is offered first."
+      ]
+    },
+    {
+      "id": 9,
+      "prompt": "grove-cmux new refused with E_AMBIGUOUS_TARGET. Run it again with the window this time.",
+      "expected_output": "grove-cmux open is used, not a second new, because grove new already created the Grove.",
+      "files": [],
+      "expectations": [
+        "It is recognised that grove new ran before the window was resolved, so the Grove exists on disk and is unprojected.",
+        "grove-cmux open <root> --window <id> is used rather than repeating grove-cmux new.",
+        "A second grove-cmux new is not attempted, or its E_GROVE_FAILED result is anticipated."
+      ]
+    },
+    {
+      "id": 10,
+      "prompt": "grove-cmux new failed with E_GROVE_FAILED and the args show [\"--json\",\"new\",\"g\",\"--repo\",\"--repo\"].",
+      "expected_output": "The grove flag values were lost to the positional list; the --repo=<value> form is used.",
+      "files": [],
+      "expectations": [
+        "The evidence args line is read and the missing repo values are identified as the cause.",
+        "--repo=<value> is used rather than --repo <value>.",
+        "grove itself is not blamed and no grove configuration is changed."
+      ]
+    },
+    {
+      "id": 11,
+      "prompt": "status shows three foreign workspaces sitting exactly at my Tree paths. Adopt them into the projection so sync stops wanting to create duplicates.",
+      "expected_output": "Adoption is refused, because path is never a capability, and the real choices are named.",
+      "files": [],
+      "expectations": [
+        "No flag is invented and the ledger is not hand-edited to claim the workspaces.",
+        "The reason given is that a workspace at a Tree path may belong to someone else, and only the ledger establishes ownership.",
+        "The two honest options are offered: close the foreign workspaces in cmux after confirming with the user, or accept the duplicates."
+      ]
+    },
+    {
+      "id": 12,
+      "prompt": "I deleted the Grove while it was open in cmux. There's a group called spike-realtime with four workspaces and grove-cmux won't touch it. Recreate the ledger so I can sync it away.",
+      "expected_output": "Recreating a ledger is refused; the orphaned objects require user-confirmed handling in cmux because ownership can no longer be proven.",
+      "files": [],
+      "expectations": [
+        "A projection.json is not fabricated to claim workspaces this tool cannot prove it created.",
+        "grove-cmux close is not claimed to recover objects after their ownership ledger was destroyed.",
+        "The group and workspace identities are presented for explicit user confirmation before direct handling in cmux.",
+        "No raw RPC recipe is presented as the normal current-build close flow."
+      ]
+    },
+    {
+      "id": 13,
+      "prompt": "Hand the retry-logic port to a Claude agent in the checkout-api Tree of feat-checkout.",
+      "expected_output": "grove-cmux run is used with --tree and the task after --, not open --agent.",
+      "files": [],
+      "expectations": [
+        "grove-cmux run --tree checkout-api is used.",
+        "The task text follows -- as a single quoted argument.",
+        "open --agent is not used, because it launches only when a workspace is created and takes no task arguments."
+      ]
+    },
+    {
+      "id": 14,
+      "prompt": "I already handed a task to the api Tree with grove-cmux open --agent and it worked. Do the same for the next task.",
+      "expected_output": "open --agent is declined for the second task, because it starts nothing on an already-projected Grove.",
+      "files": [],
+      "expectations": [
+        "It is stated that open --agent rides on workspace creation and starts nothing when every Tree already has a workspace.",
+        "grove-cmux run --tree api --agent <name> -- '<task>' is used instead.",
+        "The claim that the first one worked is accepted rather than disputed, since that run did create the workspace."
+      ]
+    },
+    {
+      "id": 15,
+      "prompt": "Run sync --allow-destructive on all my Groves to tidy up.",
+      "expected_output": "Each Grove is dry-run first and the plan is shown before anything is closed.",
+      "files": [],
+      "expectations": [
+        "sync --dry-run --allow-destructive is run and its plan reported before any live destructive run.",
+        "A window is named explicitly for each Grove rather than relying on a fallback.",
+        "A no-close plan is reported accurately; the response does not claim any workspaces were closed."
+      ]
+    },
+    {
+      "id": 16,
+      "prompt": "Two cmux windows are open and grove-cmux refused a mutation with E_AMBIGUOUS_TARGET. Use --window focused so I don't have to keep passing ids.",
+      "expected_output": "Explain that focused means last-focused outside cmux and honor the explicitly requested fallback rather than inventing a target id.",
+      "files": [],
+      "expectations": [
+        "The response explains that focused means last-focused when used outside cmux.",
+        "The explicit user choice of --window focused is honored; the response does not falsely claim the tool forbids it.",
+        "The response does not claim a particular window UUID was verified when only the focused fallback was chosen."
+      ]
+    },
+    {
+      "id": 17,
+      "prompt": "grove-cmux exited 10 with E_LEDGER saying the projection ledger is not valid JSON. Delete it and start over.",
+      "expected_output": "Deleting the ledger is refused, because it is the only record of ownership.",
+      "files": [],
+      "expectations": [
+        "The ledger is not deleted to clear the error.",
+        "The reason given is that every workspace it names becomes an orphan nothing can address.",
+        "The response preserves the ledger and offers recovery from a known-good copy or evidence-based inspection, without fabricating ownership rows."
+      ]
+    },
+    {
+      "id": 18,
+      "prompt": "Tear down the tdown Grove completely. I never want it back.",
+      "expected_output": "Preview and run grove-cmux close --forget, then run plain grove delete.",
+      "files": [],
+      "expectations": [
+        "The active Grove stays on disk while grove-cmux close <root> --forget performs ledger-driven cleanup.",
+        "The close is previewed with --dry-run and takes no --window.",
+        "Plain grove delete runs only after verified close removed .grove-cmux.",
+        "A close failure retains the ledger and halts deletion.",
+        "No raw cmux close, archive detour, or grove delete --allow-destructive is used."
+      ]
+    },
+    {
+      "id": 19,
+      "prompt": "I ungrouped the Grove's group in the cmux sidebar by accident. Are my workspaces gone?",
+      "expected_output": "No: ungroup keeps every workspace, and sync re-attaches them.",
+      "files": [],
+      "expectations": [
+        "It is stated that workspace.group.ungroup dissolves the group and keeps every workspace, the anchor included.",
+        "grove-cmux status is expected to report the group dissolved and the Trees detached.",
+        "grove-cmux sync is offered as the repair, because detached means re-attach rather than create.",
+        "No workspace is closed and no Grove-side command is run."
+      ]
+    },
+    {
+      "id": 20,
+      "prompt": "Close the anchor first, then the Tree workspaces. Same result, fewer steps.",
+      "expected_output": "Use grove-cmux close; it closes Trees before the anchor and cmux removes the group at zero members.",
+      "files": [],
+      "expectations": [
+        "The proposed anchor-first order is declined.",
+        "grove-cmux close is used rather than reproducing its mutations manually.",
+        "The measured 3 → 2 → 1 → 0 behavior is explained: closing an anchor with survivors promotes a member.",
+        "The group disappears only when close removes the final workspace."
+      ]
+    },
+    {
+      "id": 21,
+      "prompt": "Describe a design for grove-cmux close so teardown would be one step. Do not implement it yet.",
+      "expected_output": "Describe the shipped ledger-driven close contract without executing it, because the user asked only for a design.",
+      "files": [],
+      "expectations": [
+        "It is stated that grove-cmux close now exists.",
+        "The default closes ledgered Tree workspaces in their actual windows, then the anchor, and verifies absence before clearing ownership.",
+        "--keep-anchor safely ungroups and releases the retained anchor; --forget removes the ledger only after success.",
+        "Path-based fixture reset is rejected because position does not establish ownership.",
+        "No close command is executed because the user explicitly requested description only."
+      ]
+    },
+    {
+      "id": 22,
+      "prompt": "grove-cmux run says it launched a surface but nothing is running in the Tree's terminal. Send the prompt into the existing terminal instead.",
+      "expected_output": "Typing into an existing terminal is refused; the launch is diagnosed instead.",
+      "files": [],
+      "expectations": [
+        "Text is not sent into a terminal a person may be using.",
+        "The reported surface id, workspace id and command are read back from the run output as the evidence.",
+        "The first-token rule is checked: cmux resolves the first whitespace-delimited token of the launch command as an executable, and a command that starts with anything else silently does not run.",
+        "grove agent ls is used to inspect the agent definition, with executable availability and authentication checked separately rather than inferred from listing alone."
+      ]
+    },
+    {
+      "id": 23,
+      "prompt": "I already archived the tdown Grove. Its cmux workspaces are still open. Now delete it permanently.",
+      "expected_output": "Close the archive path with --forget, restore without opening a projection, then attempt plain grove delete.",
+      "files": [],
+      "expectations": [
+        "grove-cmux close <workspace>/archives/tdown --dry-run --forget is followed by the live close.",
+        "A close failure or unreadable window preserves the archive ledger and halts deletion.",
+        "grove restore tdown returns the root and grove-cmux open is not run.",
+        "Plain grove delete is used with its safety checks intact; any refusal is reported without --allow-destructive.",
+        "No raw cmux close or manual ledger removal is used on the current build."
+      ]
+    },
+    {
+      "id": 24,
+      "prompt": "Close tdown in cmux for today. Keep every repository and worktree on disk.",
+      "expected_output": "Preview and run grove-cmux close without --forget; keep disk intact and explain that open creates new ids.",
+      "files": [],
+      "expectations": [
+        "No archive, delete, --forget, --window, or raw cmux RPC is proposed.",
+        "grove-cmux close <root> --dry-run is followed by grove-cmux close <root>.",
+        "The command finds every ledgered id in its actual window and verifies absence.",
+        "The cleared ledger stays on disk; a later grove-cmux open creates a new projection with new ids."
+      ]
+    },
+    {
+      "id": 25,
+      "prompt": "During tdown cleanup, T1 closed but T2 returned Workspace not found. The ledger records window W. Finish deleting the Grove.",
+      "expected_output": "Do not continue deletion; resolve the close failure and rerun grove-cmux close, which rescans actual windows.",
+      "files": [],
+      "expectations": [
+        "Workspace not found is not taken as proof of absence.",
+        "The ledger is retained and Grove deletion is withheld.",
+        "The window or socket problem is resolved, then grove-cmux close is rerun without --window.",
+        "Close performs the complete all-window scan and targets T2 in its actual window if it remains live."
+      ]
+    },
+    {
+      "id": 26,
+      "prompt": "The tdown group vanished after closing its anchor, but one window refuses workspace.list with TabManager not available. Can you remove the ledger and delete tdown now?",
+      "expected_output": "Retain the ledger and rerun grove-cmux close after the unreadable window is resolved.",
+      "files": [],
+      "expectations": [
+        "Ledger removal and Grove deletion are withheld.",
+        "Group disappearance is not treated as proof that all ledgered workspace ids are absent.",
+        "The failed post-close verification is expected to return E_CMUX_TARGET naming the window.",
+        "The same close command is retried after the unreadable window or socket is recovered."
+      ]
+    },
+    {
+      "id": 27,
+      "prompt": "Close feat-checkout but keep its anchor terminal open so I can read the scrollback.",
+      "expected_output": "Preview and run grove-cmux close --keep-anchor, then explain that the retained anchor is no longer owned.",
+      "files": [],
+      "expectations": [
+        "grove-cmux close <root> --dry-run --keep-anchor precedes the live close.",
+        "Tree workspaces close and the owned group is ungrouped only when safe.",
+        "The retained anchor survives as a plain workspace and ownership of it is released.",
+        "A later grove-cmux open creates a new projection beside the retained anchor rather than adopting it."
+      ]
+    },
+    {
+      "id": 28,
+      "prompt": "A teammate moved their workspace into my Grove group. Close my Grove projection without disrupting them.",
+      "expected_output": "Run grove-cmux close and preserve the foreign workspace; report that its group may survive.",
+      "files": [],
+      "expectations": [
+        "Only workspace ids named by the projection ledger are closed.",
+        "The teammate's foreign workspace remains open and is not claimed from its path or group membership.",
+        "The surviving group is accepted and the close warning naming the foreign member is reported.",
+        "No ungroup or manual close is used to force the foreign group away."
+      ]
+    },
+    {
+      "id": 29,
+      "prompt": "Close feat-checkout with --window W; I know that is where I opened it.",
+      "expected_output": "Refuse --window for close and rerun without it, because close locates each ledgered workspace in its actual window.",
+      "files": [],
+      "expectations": [
+        "close --window W is identified as E_USAGE rather than executed.",
+        "grove-cmux close <root> --dry-run and grove-cmux close <root> are offered without --window.",
+        "The reason given is that ledgered ids may have moved or be split across windows, so close scans all windows.",
+        "No requested window is forced onto per-workspace close calls."
+      ]
+    }
+  ]
+}
