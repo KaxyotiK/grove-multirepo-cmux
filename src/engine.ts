@@ -535,8 +535,10 @@ export async function closeProjection(opts: CloseOptions): Promise<Report> {
     if (action.op === 'workspace.close' && action.workspace_id) {
       const located = before.workspaces.get(action.workspace_id);
       if (!located) continue;
+      // Ownership stays in the ledger until verification below proves the workspace gone. A
+      // close cmux accepts can still leave the workspace live, and dropping its row here left
+      // a retry unable to name it.
       await opts.client.closeWorkspace(action.workspace_id, located.windowId);
-      if (action.tree) writer.dropTree(action.tree);
       applied.push(action);
     } else if (action.op === 'group.ungroup' && plannedUngroup) {
       await opts.client.rpc('workspace.group.ungroup', {

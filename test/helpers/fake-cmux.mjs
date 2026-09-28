@@ -39,6 +39,8 @@
  * invisible (a restore or a concurrent move) and then reappears.
  * FAKE_CMUX_KEEP_EMPTY_GROUPS=1 leaves a group in place when its last member closes, modelling
  * delayed or failed group cleanup.
+ * FAKE_CMUX_IGNORE_CLOSE=<id> makes `workspace.close` on that workspace succeed without closing
+ * it, modelling a cmux that accepts a close the workspace then survives.
  * FAKE_CMUX_REJECT_BRANDING=1 makes every branding call fail, which is how an older cmux
  * that cannot brand is exercised without an older cmux.
  */
@@ -524,6 +526,10 @@ switch (method) {
     if (!w || (params.window_id !== undefined && w.window_id !== params.window_id)) {
       save(state);
       err('not_found', 'Workspace not found');
+    }
+    if (process.env.FAKE_CMUX_IGNORE_CLOSE === params.workspace_id) {
+      save(state);
+      ok({ ok: true });
     }
     delete state.workspaces[params.workspace_id];
     const keepEmpty = process.env.FAKE_CMUX_KEEP_EMPTY_GROUPS === '1';

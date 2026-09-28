@@ -71,8 +71,10 @@ test('AC-27: a ledger EISDIR failure after close preserves ownership and a fresh
       }
     };
 
+    // The only ledger write a close makes is the final clear, after verification; the
+    // obstruction makes that write fail. (--forget removes the directory instead of writing.)
     await assert.rejects(
-      closeProjection({ groveRoot: world.root, client: firstClient, forget: true }),
+      closeProjection({ groveRoot: world.root, client: firstClient }),
       (error: unknown) => {
         assert.ok(isGroveCmuxError(error));
         assert.equal(error.cls, 'E_LEDGER');
@@ -82,10 +84,14 @@ test('AC-27: a ledger EISDIR failure after close preserves ownership and a fresh
       },
     );
 
-    assert.equal(world.state().workspaces['tree-1'], undefined, 'the close did not take effect');
+    assert.deepEqual(world.state().workspaces, {}, 'the closes did not take effect');
     const mutations = world.state().calls.filter((call: { method: string }) => MUTATING.has(call.method));
-    assert.deepEqual(mutations.map((call: { method: string }) => call.method), ['workspace.close']);
-    assert.equal(existsSync(join(world.root, '.grove-cmux')), true, '--forget removed recovery state');
+    assert.deepEqual(
+      mutations.map((call: { method: string }) => call.method),
+      ['workspace.close', 'workspace.close', 'workspace.close'],
+    );
+    assert.equal(existsSync(join(world.root, '.grove-cmux')), true, 'the failed write removed recovery state');
+    assert.deepEqual(readLedger(world.root)!.trees, ledger.trees, 'the failed write lost Tree ownership');
 
     const retained = readLedger(world.root)!;
     const retainedIds = new Set([
@@ -100,7 +106,7 @@ test('AC-27: a ledger EISDIR failure after close preserves ownership and a fresh
     firstClient.closeWorkspace = originalClose;
     const freshClient = new CmuxClient({ bin: FAKE_CMUX });
     const retry = await closeProjection({ groveRoot: world.root, client: freshClient, forget: true });
-    assert.equal(retry.applied?.filter((action) => action.op === 'workspace.close').length, 2);
+    assert.equal(retry.applied?.filter((action) => action.op === 'workspace.close').length, 0);
     assert.deepEqual(world.state().workspaces, {});
     assert.equal(existsSync(join(world.root, '.grove-cmux')), false);
   } finally {
