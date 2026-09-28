@@ -15,14 +15,18 @@ import { makeWorld, run, runJson } from '../helpers/world.mjs';
 const REPO = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
 /** A fake grove that emits the documented envelope and creates the Grove on disk. */
-function fakeGrove(world: ReturnType<typeof makeWorld>, opts: { outcome?: string; schemaVersion?: number } = {}) {
+function fakeGrove(
+  world: ReturnType<typeof makeWorld>,
+  opts: { outcome?: string; schemaVersion?: number; recordArgv?: string } = {},
+) {
   const bin = join(world.base, 'fake-grove');
   writeFileSync(
     bin,
     `#!/usr/bin/env node
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 const argv = process.argv.slice(2);
+${opts.recordArgv ? `writeFileSync(${JSON.stringify(opts.recordArgv)}, JSON.stringify(argv));` : ''}
 const name = argv[argv.indexOf('new') + 1];
 const root = join(${JSON.stringify(world.base)}, 'groves', name);
 const outcome = ${JSON.stringify(opts.outcome ?? 'complete')};
@@ -71,6 +75,25 @@ test('AC-11: new forwards to grove --json and projects a complete outcome', () =
     assert.equal(Object.keys(w.state().groups).length, 1);
     // The Grove root came from a Tree path, not from <cwd>/<name>.
     assert.equal(r.json.grove.root, join(w.base, 'groves', 'shipit'));
+  } finally {
+    w.cleanup();
+  }
+});
+
+test('AC-11: new forwards a grove flag and its separate value together, in order', () => {
+  const w = makeWorld({ trees: [] });
+  try {
+    const argvFile = join(w.base, 'grove-argv.json');
+    const bin = fakeGrove(w, { recordArgv: argvFile });
+    const r = runJson(
+      w,
+      ['new', 'shipit', '--repo', 'one', '--branch', 'one=feat', '--from=two=main', '--all'],
+      { GROVE_BIN: bin },
+    );
+    assert.equal(r.code, 0, r.stderr);
+    assert.deepEqual(JSON.parse(readFileSync(argvFile, 'utf8')), [
+      '--json', 'new', 'shipit', '--repo', 'one', '--branch', 'one=feat', '--from=two=main', '--all',
+    ]);
   } finally {
     w.cleanup();
   }

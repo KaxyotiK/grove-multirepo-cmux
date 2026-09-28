@@ -76,15 +76,17 @@ Each command requires only the methods it calls. `close --keep-anchor` is strict
 grove exited non-zero, or its binary is not on PATH. Run the command in `args` directly and fix what grove reports.
 
 ```
-$ grove-cmux new tdown --repo checkout-api --repo storefront-web --window <id>
+$ grove-cmux new tdown --repo nosuch --window <id>
 error: E_GROVE_FAILED (8): grove exited non-zero
 evidence:
-  args: ["--json","new","tdown","--repo","--repo"]
+  bin: grove
+  args: ["--json","new","tdown","--repo","nosuch"]
   exit_code: 2
+  stderr: —
 try: run the grove command in the evidence directly and fix what it reports
 ```
 
-Check the `args` line before anything else. Grove flags need the `--flag=value` form on `grove-cmux new`; the space-separated form loses the value, which is what happened above.
+Check the `args` line before anything else: it is exactly what grove received. Run it yourself to see grove's reason; here `grove --json new tdown --repo nosuch` answers `No unique repository "nosuch"`, and `grove repo ls` lists the ones that exist.
 
 ## 9 — `E_GROVE_SCHEMA`
 

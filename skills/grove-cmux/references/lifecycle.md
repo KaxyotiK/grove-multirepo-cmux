@@ -53,15 +53,7 @@ ledger /Users/admin/work/groves/tdown3/.grove-cmux/projection.json schema 1
 created 1 group; created 2 workspaces
 ```
 
-Grove's flags must use `--flag=value`. The space-separated form loses its value:
-
-```
-$ grove-cmux new tdown --repo checkout-api --repo storefront-web --window 7FC42EEF-…
-error: E_GROVE_FAILED (8): grove exited non-zero
-evidence:
-  args: ["--json","new","tdown","--repo","--repo"]
-  exit_code: 2
-```
+Grove's flags reach `grove new` in order, in either form: `--repo checkout-api` works as well as `--repo=checkout-api`.
 
 `grove new` runs before the window is resolved, so a window refusal leaves the Grove created and unprojected:
 

@@ -110,13 +110,13 @@
     },
     {
       "id": 10,
-      "prompt": "grove-cmux new failed with E_GROVE_FAILED and the args show [\"--json\",\"new\",\"g\",\"--repo\",\"--repo\"].",
-      "expected_output": "The grove flag values were lost to the positional list; the --repo=<value> form is used.",
+      "prompt": "grove-cmux new failed with E_GROVE_FAILED and the args show [\"--json\",\"new\",\"g\",\"--repo\",\"nosuch\"].",
+      "expected_output": "The grove command from args is run directly, which names the unknown repository; grove repo ls finds the right one.",
       "files": [],
       "expectations": [
-        "The evidence args line is read and the missing repo values are identified as the cause.",
-        "--repo=<value> is used rather than --repo <value>.",
-        "grove itself is not blamed and no grove configuration is changed."
+        "The evidence args line is read and run directly rather than guessed at.",
+        "The unknown repository is identified from grove's own answer, and grove repo ls is used to find a real one.",
+        "grove-cmux is not blamed and no grove configuration is changed."
       ]
     },
     {

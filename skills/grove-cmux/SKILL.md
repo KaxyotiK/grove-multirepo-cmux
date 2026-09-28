@@ -49,9 +49,9 @@ grove-cmux open <grove-root> --window <window-id>          # existing Grove
 grove-cmux new  <name> --repo=<repo> --window <window-id>   # create, then project
 ```
 
-Two things to get right on `new`, both of which fail confusingly:
+Two things to know on `new`:
 
-- **Use `--flag=value` for grove's own flags.** `grove-cmux new g --repo api` loses `api` to the positional list and grove is invoked as `new g --repo --repo`, which exits 2 and surfaces as `E_GROVE_FAILED`. `--repo=api` works.
+- **Grove's flags pass through.** Everything after the Grove name, except grove-cmux's own flags (`--window`, `--agent`, `--json`), reaches `grove new` in order, so `--repo api` and `--repo=api` both work. `--all` on `new` is grove's.
 - **`new` runs `grove new` before it resolves the window.** If window resolution then refuses, the Grove exists on disk and is unprojected. Recover with `grove-cmux open <root> --window <id>`, never a second `new`.
 
 Pass `--window <id>` for projection mutations unless exactly one cmux window is open. `close` is the exception: it refuses `--window` and finds each ledgered workspace in its actual window. Do not reach for `--window focused` as an automatic retry — from outside cmux it means last-focused, not necessarily the window the person is looking at. If the user explicitly chooses that fallback, explain the consequence and honor that choice; otherwise resolve a concrete id.
@@ -130,7 +130,7 @@ Every refusal prints its class, evidence and a `try:` line. Read the `try:` line
 | 3 | `E_CMUX_UNAVAILABLE` | Start cmux. |
 | 4 | `E_CMUX_AUTH` | Set `CMUX_SOCKET_PASSWORD`. Do not retry blind. |
 | 5 | `E_CMUX_TARGET` | Run `grove-cmux status` to list the ids that exist. |
-| 8 | `E_GROVE_FAILED` | Run the command in `args` directly. On `new`, check the `--flag=value` form. |
+| 8 | `E_GROVE_FAILED` | Run the command in `args` directly. On `new`, check that `args` carries each grove flag with its value. |
 | 10 | `E_LEDGER` | Never delete the ledger to clear this. It is the only record of ownership. |
 | 11 | `E_AMBIGUOUS_TARGET` | Pass `--window <id>` from the evidence. |
 | 12 | `E_PRECONDITION` | For a missing Grove root: look in `<workspace>/archives/<grove>` before concluding it is gone. |
