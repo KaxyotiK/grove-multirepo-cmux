@@ -15,7 +15,7 @@ Drive `grove-cmux` from its ledger. A matching path, title, or group membership 
 5. `close --keep-anchor` closes the Trees and safely ungroups the owned group while retaining the anchor. It releases ownership of that anchor; a later `open` creates a new projection beside it.
 6. For archive, run `grove-cmux close <root> --forget` before `grove archive`. For permanent deletion, close with `--forget`, then run plain `grove delete`. If already archived, close the archive path, restore without opening, then use plain delete. Preserve every Grove refusal.
 7. If a close read or verification fails, retain the ledger and retry after resolving the window or socket problem. A surviving foreign workspace and group are reported and left alone.
-8. Grove's own flags on `grove-cmux new` use the `--flag=value` form.
+8. On `grove-cmux new`, everything after the Grove name except grove-cmux's own flags goes to `grove new` in order, so `--repo api` and `--repo=api` both work.
 
 ## Refuse
 

@@ -215,6 +215,9 @@ export function parseArgs(argv: string[]): Args {
       throw new GroveCmuxError('E_USAGE', `unknown option ${t}`, { option: t });
     }
     if (a.command === '') a.command = t;
+    // `new` takes one positional, the Grove name. Anything after it is grove's, in order, so
+    // `--repo api` keeps its value; collecting `api` as a positional sent grove `--repo` alone.
+    else if (a.command === 'new' && a.positional.length > 0) a.passthrough.push(t);
     else a.positional.push(t);
   }
   // `--` means something on exactly two commands: on `new` it belongs to grove, and on `run`
