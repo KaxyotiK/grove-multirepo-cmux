@@ -29,6 +29,8 @@
   },
   "files": [
     "dist",
+    "skills/grove-cmux",
+    "!skills/grove-cmux/evals",
     "README.md",
     "LICENSE"
   ],

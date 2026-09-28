@@ -6,7 +6,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -304,6 +304,41 @@ test('AC-01, AC-17: the packed tarball installs into a clean prefix and runs', (
     // engines says Node 24; nothing in the package may require a newer runtime feature.
     const pkg = JSON.parse(readFileSync(join(REPO, 'package.json'), 'utf8'));
     assert.equal(pkg.engines.node, '>=24');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('AC-36: the installed package carries the grove-cmux skill, whole and without its evals', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'grove-cmux-pack-'));
+  try {
+    const packed = execFileSync('npm', ['pack', '--pack-destination', dir], {
+      cwd: REPO,
+      encoding: 'utf8',
+      env: { ...process.env, npm_config_loglevel: 'error' },
+    })
+      .trim()
+      .split('\n')
+      .pop()!;
+    const prefix = join(dir, 'prefix');
+    mkdirSync(prefix, { recursive: true });
+    execFileSync('npm', ['install', '--prefix', prefix, '--no-audit', '--no-fund', join(dir, packed)], {
+      encoding: 'utf8',
+      env: { ...process.env, npm_config_loglevel: 'error' },
+    });
+    const pkg = join(prefix, 'node_modules', 'grove-multirepo-cmux');
+    const skill = join(pkg, 'skills', 'grove-cmux');
+    const entry = readFileSync(join(skill, 'SKILL.md'), 'utf8') + readFileSync(join(skill, 'AGENTS.md'), 'utf8');
+    // Every reference the skill sends an agent to must be there to read.
+    const refs = [...new Set(entry.match(/references\/[\w-]+\.md/g) ?? [])];
+    assert.ok(refs.length > 0, 'the skill names no references');
+    for (const ref of refs) assert.ok(existsSync(join(skill, ref)), `the installed skill lacks ${ref}`);
+    // The README ships in the package, so the files it links into the skill must ship too.
+    const readme = readFileSync(join(pkg, 'README.md'), 'utf8');
+    for (const [, link] of readme.matchAll(/\]\((skills\/[^)#]+)\)/g)) {
+      assert.ok(existsSync(join(pkg, link!)), `README links ${link}, which the package lacks`);
+    }
+    assert.ok(!existsSync(join(skill, 'evals')), 'the skill evals were packed');
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

@@ -47,7 +47,7 @@ See the [teardown guide](skills/grove-cmux/references/teardown.md) before combin
 ## Install
 
 ```bash
-npm install -g grove-multirepo-cmux   # installs the grove-cmux command
+npm install -g grove-multirepo-cmux   # installs the grove-cmux command and ships the grove-cmux skill
 ```
 
 From a local checkout:
@@ -80,23 +80,26 @@ If Grove creation already succeeded but projection failed, fix access and run `g
 
 ## Project skill installation
 
-The operational skill lives in `skills/grove-cmux/`. Install it only in projects that use Grove's cmux projection. From the target project, using a local checkout of this repository:
+The operational skill lives in `skills/grove-cmux/`. Install it only in projects that use Grove's cmux projection. From the target project, pin it to the release that matches the installed CLI:
 
 ```bash
 cd /path/to/target-project
 # Initialize once; choose only the agents this project uses.
 skillshare init --project --targets claude,codex,pi
-skillshare install /path/to/grove-multirepo-cmux/skills/grove-cmux --kind skill --project --dry-run
-skillshare install /path/to/grove-multirepo-cmux/skills/grove-cmux --kind skill --project
+v="v$(grove-cmux --version)"
+skillshare install github.com/KaxyotiK/grove-multirepo-cmux/skills/grove-cmux --branch "$v" --kind skill --project --dry-run
+skillshare install github.com/KaxyotiK/grove-multirepo-cmux/skills/grove-cmux --branch "$v" --kind skill --project
 skillshare sync --project --dry-run
 skillshare sync --project
 skillshare status --project
 skillshare diff --project
 ```
 
-For an existing `.skillshare/config.yaml`, keep that configuration and skip initialization. Skillshare stores the copy in the project's `.skillshare/skills/grove-cmux` and creates project links in `.claude/skills`, `.agents/skills` (Codex), and `.pi/skills` for the selected targets. No global skill installation is needed. The source checkout can be removed after installation; the installed copy stays usable. Keep an accessible source for future updates, or reinstall from a newer checkout. Review the project configuration's local source path before sharing it.
+For an existing `.skillshare/config.yaml`, keep that configuration and skip initialization. Skillshare stores the copy in the project's `.skillshare/skills/grove-cmux` (gitignored) and creates project links in `.claude/skills`, `.agents/skills` (Codex), and `.pi/skills` for the selected targets. `.skillshare/config.yaml` records the GitHub source and tag, so anyone with the project can reproduce the install with `skillshare install --project`. After upgrading the CLI, reinstall with the new tag. No global skill installation is needed.
 
-The CLI is a separate prerequisite: the skill does not install `grove-cmux`, Grove, or cmux. Verify `grove-cmux --version` and `grove-cmux --help` in the agent's environment. Installing the npm CLI package does not automatically install the skill.
+Offline, the npm package carries the same skill: `skillshare install "$(npm root -g)/grove-multirepo-cmux/skills/grove-cmux" --kind skill --project`. That records a path on your machine in `config.yaml`, so others cannot reinstall from it.
+
+The CLI is a separate prerequisite: the skill does not install `grove-cmux`, Grove, or cmux. Verify `grove-cmux --version` and `grove-cmux --help` in the agent's environment. The npm package includes the skill files but does not install them into any project; run the skillshare steps above.
 
 ## Ownership
 
